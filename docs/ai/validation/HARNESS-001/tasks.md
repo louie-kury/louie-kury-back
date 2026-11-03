@@ -1,3 +1,5 @@
+> 과거 구성의 검증 기록입니다. 2026-11-03 이후 현재 설정은 [SETUP](../../SETUP.md)을 따릅니다.
+
 # HARNESS-001 작업 목록
 
 입력: [명세](spec.md), [설계·C01–C19 검증표](plan.md). 상태: 설계 완료, 아래 구현 작업은 미실행. 변경 파일 소유권은 `scripts/ai/specify.py`와 `scripts/ai/test_specify.py`로 제한한다. 역할 정의 파일은 상위 오케스트레이터가 준비한다.

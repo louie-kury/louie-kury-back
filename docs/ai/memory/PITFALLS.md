@@ -1,3 +1,5 @@
+> 2026-11-03: 아래 Spec Kit·에이전트 관련 기록은 과거 사례다. 해당 도구는 제거했으며 현재 실행 지시는 SETUP과 WORKFLOW를 따른다.
+
 # 확인된 실수
 
 ## PF-001 — 개인 설치를 공유 하네스 준비 완료로 판단
@@ -5,7 +7,7 @@
 - 발생 조건·증상: Spec Kit CLI를 `uv tool`로 사용자 환경에만 설치하고 팀원이 사용할 하네스 구성이 끝났다고 설명했다. 다른 PC에는 CLI 실행 환경과 명세 주도 개발 역할을 재현하는 경로가 없었다.
 - 확인된 원인: 프로젝트에 스킬 파일이 있는 것과 도구·역할·의존성을 함께 공유하는 것을 구분하지 못했다. 사용자 정정과 당시 SPEC_KIT 문서의 전역 설치 절차로 확인했다.
 - 올바른 처리: 사용자 전역 설치 없이 저장소의 역할·스킬·manifest·lock·실행 wrapper로 준비하고, 빈 환경에서 재현성을 확인한다. 기본 런타임과 계정은 별도 조건으로 알린다.
-- 근거: [공유 구성](../SPEC_KIT.md), `scripts/ai/specify.py`, `scripts/ai/test_specify.py`, 로컬 `python3 -B scripts/ai/harness.py verify` (CI는 추후 별도 추가).
+- 근거: [당시 공유 구성](https://github.com/louie-kury/louie-kury-back/blob/3e5d0fccb9cb7f83003ed0a740648b2467a921e7/docs/ai/SPEC_KIT.md), `scripts/ai/specify.py`, `scripts/ai/test_specify.py`, 로컬 `python3 -B scripts/ai/harness.py verify` (CI는 추후 별도 추가).
 - 재발 횟수: 1회. 방지 장치: 문서 / 전역 fallback 방지 회귀 테스트 / 새 checkout의 CI 준비 명령.
 - 상태·적용 범위: 수정됨. macOS의 빈 임시 복사본에서 전역 CLI·가상환경·캐시 없이 준비·템플릿 조회 확인. 다른 물리 PC·Windows/Linux CI 원격 실행·실제 모델 역할 호출은 별도 검증 대상이다. 마지막 확인: 2026-10-29.
 

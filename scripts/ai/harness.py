@@ -125,14 +125,23 @@ def save_handoff(root, session, payload):
 
 
 def check_config(root):
-    from specify import check_agents
-
+    roles = {"planner", "implementer", "tester", "reviewer"}
+    directory = root / ".codex/agents"
+    if {path.stem for path in directory.glob("*.toml")} != roles:
+        raise ValueError("expected exactly planner, implementer, tester and reviewer")
+    for name in sorted(roles):
+        role = tomllib.loads((directory / (name + ".toml")).read_text())
+        if role.get("name") != name:
+            raise ValueError("agent name must match its file: " + name)
+        for field in ("name", "description", "developer_instructions"):
+            value = role.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError("missing agent instruction: " + name + ": " + field)
     config = tomllib.loads((root / ".codex/config.toml").read_text())
     hooks = json.loads((root / ".codex/hooks.json").read_text())
     browser = json.loads((root / ".playwright/cli.config.json").read_text())
     manifest = json.loads((root / "tools/ai/package.json").read_text())
     lock = json.loads((root / "tools/ai/package-lock.json").read_text())
-    check_agents(root)
     if config.get("hooks"):
         raise ValueError("inline hooks duplicate hooks.json")
     if set(config.get("mcp_servers", {})) != {"context7"}:
@@ -152,7 +161,7 @@ def check_config(root):
         raise ValueError("CLI manifest and lock differ")
     if not browser["browser"]["isolated"]:
         raise ValueError("review browser persistence change")
-    for skill in ("project-verify", "project-review", "project-security-review", "project-handoff", "playwright-cli"):
+    for skill in ("project-verify", "project-review", "project-security-review", "project-handoff", "playwright-cli", "vibe-wise", "vibe-wise-reset"):
         data = (root / ".agents/skills" / skill / "SKILL.md").read_text()
         if not data.startswith("---\n") or f"name: {skill}\n" not in data or "description:" not in data:
             raise ValueError(f"invalid skill frontmatter: {skill}")
