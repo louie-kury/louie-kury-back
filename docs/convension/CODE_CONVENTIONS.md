@@ -280,7 +280,7 @@ consultation-service/
 | --- | --- | --- |
 | 컨트롤러 | 클래스에 `@RestController`와 공통 경로를 지정하는 `@RequestMapping`을 붙인다. 엔드포인트에는 `@GetMapping`, `@PostMapping` 등 HTTP 메서드에 맞는 매핑을 하나 붙인다. | 본문 DTO에는 `@Valid @RequestBody`, 경로 변수에는 `@PathVariable`을 붙인다. HTTP 상태와 공통 응답 본문은 `ResponseEntity`에서 지정한다. |
 | 서비스 | 클래스에 `@Service`를 붙인다. | DB 쓰기 유스케이스의 공개 메서드에는 `@Transactional`, DB 조회 전용 유스케이스에는 `@Transactional(readOnly = true)`를 붙인다. |
-| 레포지토리 | Spring Data JPA 인터페이스는 `JpaRepository<엔티티, ID 타입>`를 상속한다. 인터페이스에 `@Repository`를 중복 선언하지 않는다. | 기본 CRUD와 메서드 이름으로 표현하기 어려운 쿼리에 `@Query`를 쓴다. |
+| 레포지토리 | Spring Data JPA 인터페이스는 `JpaRepository<엔티티, ID 타입>`를 상속한다. 인터페이스에 `@Repository`를 중복 선언하지 않는다. | 복잡한 조회는 [조회 방식 선택](#92-조회-방식-선택) 기준에 따라 Querydsl로 작성한다. |
 | 요청 DTO | `private final` 필드, `@Getter`, `@RequiredArgsConstructor(access = AccessLevel.PRIVATE)`를 사용한다. `of`와 비공개 빌더로 생성한다. | JSON 본문과 연결하는 `of`에 `@JsonCreator`, 매개변수에 `@JsonProperty`를 붙인다. 입력 제약은 필드 위에 하나씩 한 줄에 쓴다. 각 필드와 그 어노테이션을 한 묶음으로 두고, 묶음 사이에 빈 줄을 한 줄 둔다. |
 | 응답 DTO | 클래스로 선언하고, 필드는 `private final`로 둔다. `@Getter`로 조회 메서드를 만들고, `@RequiredArgsConstructor(access = AccessLevel.PRIVATE)`로 생성자를 만든다. | 단일 엔티티를 변환할 때는 `from`과 비공개 빌더를 쓴다. |
 | 엔티티 | 클래스 어노테이션은 `@Getter`, `@Entity`, `@Table(name = "...")`, `@NoArgsConstructor` 순서로 붙인다. `@Table`에 테이블 이름을 명시하고 식별자 필드에 `@Id`를 붙인다. JPA용 기본 생성자는 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`로 만들고, 값을 초기화하는 생성자는 직접 작성한다. | JPA가 생성하는 식별자에는 `@GeneratedValue(strategy = ...)`로 스키마에 맞는 생성 전략을 명시한다. 컬럼 제약, 연관관계, 읽기 접근자는 필요한 곳에 선언한다. |
@@ -555,7 +555,13 @@ private Long productId;
 
 연관관계를 매핑했다면 지연 로딩을 기본으로 명시하고, 연관 데이터가 필요한 조회에서 가져올 범위를 정한다. ID 참조도 목록의 각 ID를 개별 조회하면 호출이 늘어난다. 목록은 필요한 데이터를 묶어서 조회하고, 실제 SQL이나 API 호출 횟수를 확인한다. [Hibernate ORM 조회 전략](https://docs.hibernate.org/orm/7.1/userguide/html_single/#fetching), [마이크로서비스 데이터 소유권](https://learn.microsoft.com/en-us/azure/architecture/microservices/design/data-considerations)
 
-### 9.2 추가로 정할 항목
+### 9.2 조회 방식 선택
+
+- 기본 CRUD와 단순 조회는 `JpaRepository`의 기본 메서드와 메서드 이름으로 쿼리를 생성하는 방식을 사용한다.
+- 선택 조건을 여러 개 조합하거나 조인·집계로 쿼리가 복잡해지는 조회는 Querydsl로 작성한다. 예를 들어 상담 목록에서 상태·수의사·기간 중 전달받은 조건만 조합해 조회한다.
+- 실행 성능을 개선하려고 조회 방식을 바꾸는 경우에는 실제 SQL, 쿼리 횟수, 필요에 따라 실행 계획을 비교한다.
+
+### 9.3 추가로 정할 항목
 
 - `BaseEntity`에 둘 공통 필드와 상속을 적용할 엔티티의 범위
 - 테이블, 컬럼, 키, 인덱스 이름
