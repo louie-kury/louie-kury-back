@@ -3,7 +3,9 @@
 | 할 일 | 참고할 곳 |
 | --- | --- |
 | 프로젝트 이해 | [PRD](../prd.md), 현재 Git 상태 |
+| 코드 작성·리뷰 | [코드 컨벤션](../convension/CODE_CONVENTIONS.md)에서 제목을 찾아 작업에 해당하는 절만 읽는다. 예를 들어 이름은 3번, 패키지와 계층은 4번, DB 매핑은 9번을 참고한다. |
 | 함께 계획·선택 이유 기록 | `$vibe-wise`, [명세 틀](templates/spec.md), 해당 기능 문서 |
+| 주요 설계 결정 기록 | [ADR 작성 위치와 기준](WORKFLOW.md#설계-결정-기록) |
 | 역할 배정·테스트/리뷰/QA·문서 동기화 | [WORKFLOW](WORKFLOW.md), `.codex/agents/`의 해당 역할만 |
 | 개발 순서·사람의 결정 | [WORKFLOW](WORKFLOW.md), [대화 확인](HUMAN_GATES.md) |
 | 도구 설치·검사 명령 | [SETUP](SETUP.md#commands) |
