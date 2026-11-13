@@ -1,0 +1,10 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "isolated": true,
+    "launchOptions": {"channel": "chrome", "headless": true}
+  },
+  "outputDir": ".playwright-cli",
+  "outputMode": "file",
+  "timeouts": {"action": 5000, "navigation": 15000}
+}

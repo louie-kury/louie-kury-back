@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@playwright/cli": "0.1.22"
+  },
+  "name": "louipuri-ai-tools",
+  "private": true,
+  "description": "Project-local development harness tools; not a product runtime",
+  "engines": {
+    "node": ">=20"
+  }
+}
