@@ -1,9 +1,9 @@
 # ERD (Entity Relationship Diagram)
 
-루이쿠리의 현재 ERD 초안을 도메인별로 정리했다. 테이블명, 컬럼명, 타입, NULL 허용 여부와 주석은 첨부 SQL을 기준으로 한다. 제품 요구사항은 [PRD](prd.md)에서 확인할 수 있다.
+루이쿠리의 현재 ERD 초안을 도메인별로 정리했다. 첨부 SQL을 바탕으로 작성했으며, [PRD](prd.md) 변경분(`5f03d5b`)을 반영했다. 추가·변경된 컬럼과 관계는 설계 초안이다.
 
-- `PK`는 첨부 SQL에 선언된 기본키이며, `NULL` 표기가 없는 컬럼은 `NOT NULL`이다.
-- 점선은 컬럼명에서 추정한 참조 관계다. 관계의 개수는 참조 컬럼의 NULL 허용 여부를 바탕으로 표시했다. 첨부 SQL에는 FK와 UNIQUE 제약 선언이 없다.
+- `PK`는 다이어그램에 표시한 기본키이며, `NULL` 표기가 없는 컬럼은 `NOT NULL`이다.
+- 점선은 첨부 SQL과 PRD를 바탕으로 표시한 참조 관계다. 관계의 개수는 참조 컬럼의 NULL 허용 여부를 바탕으로 표시했다. 첨부 SQL에는 FK와 UNIQUE 제약 선언이 없다.
 - 다른 도메인의 참조 대상은 해당 다이어그램에 이름만 표시한다.
 
 ## 엔티티 목록
@@ -22,6 +22,7 @@
 | 보호자 · 수의사 · 병원 | `수의사 약관` |
 | 보호자 · 수의사 · 병원 | `수의사 약관 동의` |
 | 보호자 · 수의사 · 병원 | `병원` |
+| 보호자 · 수의사 · 병원 | `병원 정산 계좌` |
 | 반려동물 · 건강 기록 | `반려동물` |
 | 반려동물 · 건강 기록 | `종` |
 | 반려동물 · 건강 기록 | `품종` |
@@ -33,6 +34,7 @@
 | 반려동물 · 건강 기록 | `접종명` |
 | 반려동물 · 건강 기록 | `병원진료` |
 | 상담 · 일지 · 후기 | `상담` |
+| 상담 · 일지 · 후기 | `상담 연결` |
 | 코인 · 결제 · 정산 | `코인 지갑` |
 | 코인 · 결제 · 정산 | `코인 충전 주문` |
 | 코인 · 결제 · 정산 | `코인 결제` |
@@ -102,6 +104,8 @@ erDiagram
     "보호자 약관" ||..o{ "보호자 약관 동의" : "terms_id"
     "수의사" ||..o{ "수의사 미디어" : "veterinarian_id"
     "병원" ||..o{ "수의사" : "hospital_id"
+    "병원" ||..o{ "병원 정산 계좌" : "hospital_id"
+    "수의사" ||..o{ "병원 정산 계좌" : "veterinarian_id"
 
     "보호자" {
         BIGINT id PK
@@ -185,6 +189,8 @@ erDiagram
         BIGINT id PK
         VARCHAR(255) uuid
         VARCHAR name
+        VARCHAR business_registration_number
+        VARCHAR representative_name
         VARCHAR address
         VARCHAR detail_address
         VARCHAR tel_no
@@ -192,7 +198,14 @@ erDiagram
         DATETIME updated_at
         DATETIME deleted_at "NULL"
     }
+    "병원 정산 계좌" {
+        BIGINT id PK
+        BIGINT hospital_id
+        BIGINT veterinarian_id "가입 시 등록한 수의사"
+    }
 ```
+
+ACC-02에 따라 수의사 가입에는 소속 병원과 해당 병원 명의의 사업자 계좌가 필요하다. 계좌 입력 항목과 검증 결과의 저장 방식은 D02에서 확정한다. 병원 주소는 주소 검색 결과를 사용하며 상세주소 입력 방식은 D11에서 확정한다.
 
 `수의사`에는 `hospital_id`와 `hospital_uuid`가 함께 있다. `수의사 약관 동의.veterinarian_uuid`는 `BIGINT`이고 `수의사.uuid`는 `VARCHAR`다. `veterinarian_uuid`와 `id2`의 참조 대상 컬럼을 확인해야 한다.
 
@@ -307,30 +320,44 @@ erDiagram
 ```mermaid
 erDiagram
     "보호자" ||..o{ "상담" : "caregiver_uuid"
-    "수의사" ||..o{ "상담" : "veterinarian_uuid"
+    "수의사" |o..o{ "상담" : "veterinarian_uuid"
     "반려동물" ||..o{ "상담" : "pet_uuid"
+    "상담" ||..o{ "상담 연결" : "consultation_id"
 
     "상담" {
         BIGINT id PK
         VARCHAR uuid
         VARCHAR caregiver_uuid
-        VARCHAR veterinarian_uuid
+        VARCHAR veterinarian_uuid "NULL · 지정 예약은 필수, 즉시 상담은 매칭 확정 시 설정"
         VARCHAR pet_uuid
-        VARCHAR status "대기, 상담중, 완료"
+        VARCHAR request_type "지정 예약, 위치 기반 즉시 상담"
+        VARCHAR channel "채팅, 화상통화, 안심번호 전화"
+        INTEGER fee_coin_amount "신청 시 적용한 상담 요금(코인)"
+        VARCHAR status "지정 예약 상태와 즉시 상담 매칭 결과를 표현"
         VARCHAR consultation_title
         VARCHAR consultation_content
         VARCHAR consultation_record "내용만 작성"
         DOUBLE rating "NULL"
         VARCHAR review_content "NULL"
         DATETIME created_at
-        DATETIEM preferred_at "NULL"
+        DATETIME preferred_at "NULL · 지정 예약은 필수"
+        DATETIME matched_at "NULL · 즉시 상담 매칭 확정 시각"
         DATETIME consulted_at "NULL"
         DATETIME cancelled_at "NULL"
         DATETIME reviewed_at "NULL"
     }
+    "상담 연결" {
+        BIGINT id PK
+        BIGINT consultation_id
+        VARCHAR status "연결·실패 결과"
+        VARCHAR external_connection_id "NULL · 외부 연동 식별자"
+        DATETIME created_at
+    }
 ```
 
-첨부본은 상담 일지와 후기 정보를 `상담.consultation_record`, `rating`, `review_content`, `reviewed_at`에 담는다. `preferred_at`의 타입은 원본에 `DATETIEM`으로 적혀 있다.
+CON-01·CON-03·CON-05에 따라 즉시 상담은 `created_at`부터 최대 60초 동안 매칭을 기다린다. 최초 수락자 한 명을 확정할 때 담당 수의사 지정과 코인 차감이 한 번만 성립해야 한다. 미매칭과 매칭 전 취소에는 차감이 발생하지 않는다. 즉시 상담은 매칭 후에도 기존 건강 기록 열람 권한을 부여하지 않는다. 대기 화면과 단계별 요청 전달의 저장 방식은 D15·D17에서, 상태 변경 이력과 내부 상태값은 상담 상태 상세 설계에서 확정한다.
+
+상담 연결 시도는 상담과 연결하며 담당 수의사와 수단은 상담에서 확인한다. 수단 변경 및 연결 이력 보관은 D06에서 확정한다. 상담 일지와 후기는 `상담.consultation_record`, `rating`, `review_content`, `reviewed_at`에 담는다.
 
 ## 5. 코인 · 결제 · 정산
 
@@ -346,6 +373,7 @@ erDiagram
     "보호자" ||..o{ "상담 코인 홀드" : "caregiver_uuid"
     "상담 코인 홀드" ||..o{ "수의사 정산" : "consultation_hold_id"
     "수의사" ||..o{ "수의사 정산" : "veterinarian_UUID"
+    "병원 정산 계좌" |o..o{ "수의사 정산" : "payout_account_id"
 
     "코인 지갑" {
         BIGINT id PK
@@ -360,7 +388,7 @@ erDiagram
         BIGINT coin_wallet_id
         VARCHAR order_uuid
         VARCHAR caregiver_uuid
-        INTEGER charge_amount
+        INTEGER charge_amount "충전 코인 수"
         VARCHAR status
         DATETIME created_at
         DATETIME expires_at
@@ -374,7 +402,7 @@ erDiagram
         VARCHAR pg_payment_key "NULL · PG사에서 발급한 결제 식별자 UNIQUE"
         VARCHAR pg_cancel_key "NULL · PG사에서 발급한 취소 식별자"
         VARCHAR transaction_type "Enum(PAYMENT, REFUND)"
-        INTEGER amount "결제는 양수(+), 환불은 음수(-)"
+        INTEGER amount "원 · 결제는 양수(+), 환불은 음수(-)"
         VARCHAR method "카드, 간편결제"
         VARCHAR status "ENUM(PENDING, PAID, CANCELLED, FAILED, EXPIRED)"
         DATETIME paid_at "NULL · 결제 승인 또는 환불 완료 일시"
@@ -410,15 +438,21 @@ erDiagram
         BIGINT id PK
         BIGINT consultation_hold_id
         VARCHAR veterinarian_UUID
-        INTEGER coin_amount
-        DECIMAL commision_rate "DECIMAL(5, 2) · BIGDECIMAL"
-        INTEGER comission_amount
-        INTEGER payout_amount
-        VARCHAR status "ENUM(PENDING, READY, PAID, CANCELLED)"
+        BIGINT payout_account_id "NULL · 이체 요청 시 필수"
+        INTEGER coin_amount "사용 확정 코인 수"
+        INTEGER settlement_base_amount "부가세 제외 정산 기준액(원)"
+        DECIMAL commision_rate "DECIMAL(5, 2) · 수수료율(%)"
+        INTEGER comission_amount "플랫폼 수수료(원)"
+        INTEGER payout_amount "수의사 배분액(원)"
+        VARCHAR status "기존 상태: PENDING, READY, PAID, CANCELLED · 이체 실패 기록 필요(D02)"
         DATETIME paid_at "NULL"
         DATETIME created_at
     }
 ```
+
+PAY-01·PAY-02에 따라 7,700원 결제 성공 시 7,000코인을 지급한다. 두 유형 모두 상담 1건당 7,000코인을 차감하며, 지정 예약은 신청 시, 즉시 상담은 매칭 확정 시 `상담 코인 홀드`에 실제 차감량을 기록한다.
+
+SET-01에 따라 완료 상담 1건의 정산 기준액은 7,000원이며 플랫폼 수수료는 20%인 1,400원, 수의사 배분액은 5,600원이다. 부가세 700원은 배분에서 제외한다. 매월 25일 정산 후 등록된 병원 명의 계좌로 이체를 요청하고 성공을 확인한 뒤 지급 완료로 기록한다. 소속·계좌 변경 시 기존 상담에 적용할 계좌와 이체 실패 재시도 절차는 D02에서 확정한다.
 
 `코인 결제.original_transaction_id`의 원본 주석은 결제 자기 참조를 가리킨다. 이 컬럼은 `INTEGER`이고 `코인 결제.id`는 `BIGINT`다. `pg_payment_key`의 유일성은 주석에 기재돼 있다. `코인 내역.related_type`과 `related_id`의 대상 테이블은 유형별로 확인해야 한다.
 
@@ -518,6 +552,7 @@ erDiagram
 erDiagram
     "관리자" ||..o{ "관리자권한" : "admin_id"
     "권한" ||..o{ "관리자권한" : "role_id"
+    "상담" |o..o{ "신고" : "consultation_id"
     "신고" ||..o{ "신고 사유 선정" : "report_id"
     "신고 사유" ||..o{ "신고 사유 선정" : "report_reason_id"
 
@@ -543,6 +578,8 @@ erDiagram
         BIGINT id PK
         VARCHAR uuid
         VARCHAR reporter_type "caregiver, veterinarian"
+        BIGINT consultation_id "NULL · 상담 보호자 신고는 필수"
+        VARCHAR reporter_uuid "NULL · 상담 보호자 신고는 담당 수의사 UUID 필수"
         VARCHAR target_uuid
         VARCHAR target_type "Enum (CAREGIVER, VETERINARIAN, BOARD, COMMENT)"
         VARCHAR content "신고자가 작성한 내용(자유양식)"
@@ -565,6 +602,8 @@ erDiagram
         BIGINT report_reason_id
     }
 ```
+
+CON-04의 보호자 신고는 기존 `신고`에 기록한다. 해당 상담과 담당 수의사를 연결하고, 신고 대상은 그 상담의 보호자로 제한한다. 신고 사유·입력 항목은 D04에서 확정한다.
 
 `신고.target_uuid`는 `target_type`에 따라 참조 대상이 달라진다. 게시글과 댓글에는 첨부본 기준 `BIGINT id`가 있어 신고 대상 식별 방식과 `reviewer_user_id`의 참조 대상을 확인해야 한다.
 
